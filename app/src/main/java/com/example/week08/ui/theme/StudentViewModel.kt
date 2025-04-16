@@ -8,31 +8,37 @@ import com.google.firebase.firestore.firestore
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
-
 class StudentViewModel : ViewModel() {
     private val db = Firebase.firestore
     var students by mutableStateOf(listOf<Student>())
         private set
+
     init {
         fetchStudents()
     }
-    fun addStudent(student: Student) {
+
+    fun addStudent(student: Student, phones: List<String>) {
         val studentMap = hashMapOf(
             "id" to student.id,
             "name" to student.name,
-            "program" to student.program,
-            "phones" to student.phones
+            "program" to student.program
         )
+
         db.collection("students")
             .add(studentMap)
-            .addOnSuccessListener {
-                Log.d("Firestore", "DocumentSnapshot added with ID:${it.id}")
+            .addOnSuccessListener { documentRef ->
+                phones.forEach { phone ->
+                    val phoneMap = hashMapOf("number" to phone)
+                    documentRef.collection("phones").add(phoneMap)
+                }
+                Log.d("Firestore", "DocumentSnapshot added with ID:${documentRef.id}")
                 fetchStudents()
             }
             .addOnFailureListener { e ->
                 Log.w("Firestore", "Error adding document", e)
             }
     }
+
     private fun fetchStudents() {
         db.collection("students")
             .get()
@@ -42,15 +48,12 @@ class StudentViewModel : ViewModel() {
                     val id = document.getString("id") ?: ""
                     val name = document.getString("name") ?: ""
                     val program = document.getString("program") ?: ""
-                    val phones = document.get("phones") as? List<String>
-                        ?: emptyList()
-                    list.add(Student(id, name, program, phones))
+                    list.add(Student(id, name, program))
                 }
                 students = list
             }
             .addOnFailureListener { exception ->
-                Log.w("Firestore", "Error getting documents.",
-                    exception)
+                Log.w("Firestore", "Error getting documents.", exception)
             }
     }
 }
